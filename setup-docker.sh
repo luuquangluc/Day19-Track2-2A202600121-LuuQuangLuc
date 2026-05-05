@@ -8,6 +8,16 @@ echo "[docker] Day 19 full Docker setup"
 echo "[docker] Stack: Qdrant (server) + Redis + Postgres + bge-m3 embeddings"
 echo
 
+# ── 1. Python ───────────────────────────────────────────────────────────
+if command -v python3 >/dev/null 2>&1 && python3 --version >/dev/null 2>&1; then
+  PYTHON_CMD=python3
+elif command -v python >/dev/null 2>&1 && python --version >/dev/null 2>&1; then
+  PYTHON_CMD=python
+else
+  echo "[docker] Python 3 not found. Install Python 3.10+."
+  exit 1
+fi
+
 # ── 1. Docker preflight ─────────────────────────────────────────────────
 command -v docker >/dev/null 2>&1 || { echo "[docker] Docker not found. Install Docker Desktop first."; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo "[docker] Need Docker Compose v2 (bundled with Desktop ≥ 4.x)."; exit 1; }
@@ -28,18 +38,22 @@ if [ ! -d ".venv" ]; then
   if command -v uv >/dev/null 2>&1; then
     uv venv .venv
   else
-    python3 -m venv .venv
+    $PYTHON_CMD -m venv .venv
   fi
 fi
 # shellcheck source=/dev/null
-source .venv/bin/activate
+if [ -f ".venv/Scripts/activate" ]; then
+  source .venv/Scripts/activate
+else
+  source .venv/bin/activate
+fi
 
 # ── 4. Install lite + docker extras ─────────────────────────────────────
 if command -v uv >/dev/null 2>&1; then
   uv pip install -r requirements.txt -r requirements-full.txt
 else
-  pip install -q -U pip
-  pip install -q -r requirements.txt -r requirements-full.txt
+  python -m pip install -U pip
+  python -m pip install -r requirements.txt -r requirements-full.txt
 fi
 
 jupytext --to notebook --update notebooks/*.py 2>/dev/null || jupytext --to notebook notebooks/*.py
@@ -71,7 +85,7 @@ cat <<EOF
 
 Activate the venv and continue:
 
-    source .venv/bin/activate
+    source .venv/$(if [ "$OS" = "Windows_NT" ]; then echo "Scripts"; else echo "bin"; fi)/activate
     make api       # start FastAPI on :8000
     make lab       # open Jupyter on :8888
 

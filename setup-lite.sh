@@ -9,9 +9,17 @@ echo "[lite] Stack: fastembed + qdrant-client[memory] + rank-bm25 + feast(sqlite
 echo
 
 # ── 1. Python ───────────────────────────────────────────────────────────
-command -v python3 >/dev/null 2>&1 || { echo "[lite] python3 not found. Install Python 3.10+."; exit 1; }
-PY_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-echo "[lite] Python $PY_VER detected"
+if command -v python3 >/dev/null 2>&1 && python3 --version >/dev/null 2>&1; then
+  PYTHON_CMD=python3
+elif command -v python >/dev/null 2>&1 && python --version >/dev/null 2>&1; then
+  PYTHON_CMD=python
+else
+  echo "[lite] Python 3 not found. Install Python 3.10+."
+  exit 1
+fi
+
+PY_VER=$($PYTHON_CMD -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+echo "[lite] Python $PY_VER detected using $PYTHON_CMD"
 
 # ── 2. venv ─────────────────────────────────────────────────────────────
 if [ ! -d ".venv" ]; then
@@ -20,22 +28,26 @@ if [ ! -d ".venv" ]; then
     uv venv .venv
   else
     echo "[lite] Creating venv with python -m venv"
-    python3 -m venv .venv
+    $PYTHON_CMD -m venv .venv
   fi
 fi
 # shellcheck source=/dev/null
-source .venv/bin/activate
+if [ -f ".venv/Scripts/activate" ]; then
+  source .venv/Scripts/activate
+else
+  source .venv/bin/activate
+fi
 
 # ── 3. Install deps ─────────────────────────────────────────────────────
 if command -v uv >/dev/null 2>&1; then
   uv pip install -r requirements.txt
 else
-  pip install -q -U pip
-  pip install -q -r requirements.txt
+  python -m pip install -U pip
+  python -m pip install -r requirements.txt
 fi
 
 # ── 4. Convert Jupytext sources to .ipynb ───────────────────────────────
-jupytext --to notebook --update notebooks/*.py 2>/dev/null || jupytext --to notebook notebooks/*.py
+jupytext --to notebook --update notebooks/*.py || jupytext --to notebook notebooks/*.py
 
 # ── 5. .env scaffold ────────────────────────────────────────────────────
 [ -f .env ] || cp .env.example .env
@@ -48,9 +60,9 @@ python scripts/verify_lite.py
 
 cat <<EOF
 
-[lite] Done. Activate the venv and start working:
+[lite] Done. Activate the venv and continue:
 
-    source .venv/bin/activate
+    source .venv/$(if [ "$OS" = "Windows_NT" ]; then echo "Scripts"; else echo "bin"; fi)/activate
     make api       # start FastAPI on :8000
     make lab       # open Jupyter on :8888
     make benchmark # Precision@10 + latency table

@@ -30,8 +30,10 @@ import httpx
 
 # %%
 ROOT = Path(_setup.__file__).resolve().parent.parent
+# On Windows, we use Scripts/uvicorn.exe. On others, bin/uvicorn.
+uvicorn_path = ROOT / ".venv" / ("Scripts" if _setup.sys.platform == "win32" else "bin") / "uvicorn"
 proc = subprocess.Popen(
-    ["uvicorn", "app.main:app", "--port", "8000", "--log-level", "warning"],
+    [str(uvicorn_path), "app.main:app", "--port", "8000", "--log-level", "warning"],
     cwd=str(ROOT),
 )
 

@@ -83,8 +83,10 @@ for p in sorted(FEAST_DATA.glob("*.parquet")):
 # Chạy `feast apply` để Feast đọc file definition và ghi vào `registry.db`.
 
 # %%
+# On Windows, we use Scripts/feast.exe. On others, bin/feast.
+feast_path = REPO_ROOT / ".venv" / ("Scripts" if _setup.sys.platform == "win32" else "bin") / "feast"
 res = subprocess.run(
-    ["feast", "apply"],
+    [str(feast_path), "apply"],
     cwd=str(FEAST_DIR),
     capture_output=True, text=True, check=False,
 )
@@ -104,7 +106,7 @@ assert res.returncode == 0, f"feast apply failed: {res.stderr}"
 # %%
 end_dt = NOW.strftime("%Y-%m-%dT%H:%M:%S")
 res = subprocess.run(
-    ["feast", "materialize-incremental", end_dt],
+    [str(feast_path), "materialize-incremental", end_dt],
     cwd=str(FEAST_DIR),
     capture_output=True, text=True, check=False,
 )
